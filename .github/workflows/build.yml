@@ -19,7 +19,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev cmake
+          sudo apt-get install -y openjdk-17-jdk git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev cmake libffi-dev libssl-dev
       
       - name: Install Python dependencies
         run: |
@@ -30,7 +30,6 @@ jobs:
       - name: Build APK
         run: |
           cd swt-android-app
-          buildozer android clean
           buildozer android debug --verbose
       
       - name: Upload APK
