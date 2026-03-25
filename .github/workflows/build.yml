@@ -27,15 +27,10 @@ jobs:
           pip install cython==0.29.37
           pip install buildozer==1.5.0
       
-      - name: Initialize Buildozer
-        run: |
-          cd swt-android-app
-          buildozer android setup
-          buildozer android clean
-      
       - name: Build APK
         run: |
           cd swt-android-app
+          buildozer android clean
           buildozer android debug --verbose
       
       - name: Upload APK
