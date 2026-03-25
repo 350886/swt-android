@@ -19,14 +19,13 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk git zip unzip autoconf automake libtool
+          sudo apt-get install -y openjdk-17-jdk git zip unzip
       
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip setuptools wheel
           pip install cython
-          pip install buildozer==1.5.0
-          pip install python-for-android==2022.7.20
+          pip install buildozer
       
       - name: Build APK
         run: |
