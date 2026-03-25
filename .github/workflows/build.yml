@@ -19,27 +19,17 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk git zip unzip autoconf automake libtool libtool-bin m4 pkg-config zlib1g-dev libncurses5-dev cmake libffi-dev libssl-dev
-          sudo libtoolize --install --copy --force
-          sudo cp /usr/share/aclocal/* /usr/local/share/aclocal/ 2>/dev/null || true
-          sudo aclocal || true
-      
-      - name: Accept Android SDK licenses
-        run: |
-          mkdir -p $HOME/.android
-          touch $HOME/.android/repositories.cfg
+          sudo apt-get install -y openjdk-17-jdk git zip unzip
       
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install cython==0.29.37
           pip install buildozer==1.5.0
+          pip install python-for-android==0.8.0
       
       - name: Build APK
         run: |
           cd swt-android-app
-          export ACLOCAL_PATH="/usr/share/aclocal:/usr/local/share/aclocal:$ACLOCAL_PATH"
-          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/pkgconfig:$PKG_CONFIG_PATH"
           buildozer android debug --verbose
       
       - name: Upload APK
