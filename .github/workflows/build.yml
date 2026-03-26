@@ -9,6 +9,10 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+      PYTHONIOENCODING: utf-8
+      PYTHONDONTWRITEBYTECODE: 1
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -56,10 +60,10 @@ jobs:
           pip install cython==0.29.33
           pip install buildozer==1.5.0
       
-      - name: Ensure UTF-8 locale
+      - name: Remove CPython test files
         run: |
-          echo "LC_ALL=C.UTF-8" >> $GITHUB_ENV
-          echo "LANG=C.UTF-8" >> $GITHUB_ENV
+          find "$HOME/.buildozer" -type d -path "*/python3/*/Lib/test" -exec rm -rf {} + 2>/dev/null || true
+          find "$HOME/.buildozer" -type f -name "badsyntax_pep3120.py" -exec rm -f {} + 2>/dev/null || true
       
       - name: Build APK
         working-directory: swt-android-app
