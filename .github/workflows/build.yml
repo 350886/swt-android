@@ -24,8 +24,13 @@ jobs:
       
       - name: Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config \
+            libffi-dev libssl-dev libbz2-dev libsqlite3-dev \
+            libncurses5-dev libgdbm-dev liblzma-dev uuid-dev zlib1g-dev
           pip install --upgrade pip
-          pip install buildozer cython
+          pip install cython==0.29.33
+          pip install buildozer
       
       - name: Build APK
         working-directory: swt-android-app
