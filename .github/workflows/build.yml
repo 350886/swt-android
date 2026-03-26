@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -16,6 +16,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libtinfo5 libtinfo-dev || true
       
       - name: Build with Buildozer
         uses: digreatbrian/buildozer-action@v2
