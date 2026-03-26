@@ -60,18 +60,18 @@ jobs:
       - name: Build APK
         working-directory: swt-android-app
         run: |
+          set -euo pipefail
           buildozer android debug --verbose &
           BUILD_PID=$!
-          for i in $(seq 1 600); do
-            if find ./.buildozer -type d -path "*/python3/*/Lib/test" 2>/dev/null | grep -q .; then
+          while kill -0 "$BUILD_PID" 2>/dev/null; do
+            if find ./.buildozer -type d -path "*/python3/*/Lib/test" -print -quit 2>/dev/null; then
               echo "Removing CPython test directories..."
               find ./.buildozer -type d -path "*/python3/*/Lib/test" -exec rm -rf {} + 2>/dev/null || true
-              find ./.buildozer -type f -name "badsyntax_pep3120.py" -delete 2>/dev/null || true
-              break
             fi
-            sleep 1
+            find ./.buildozer -type f -name "badsyntax_pep3120.py" -print -exec rm -f {} + 2>/dev/null || true
+            sleep 0.2
           done
-          wait $BUILD_PID
+          wait "$BUILD_PID"
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
