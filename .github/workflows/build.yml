@@ -35,7 +35,20 @@ jobs:
       - name: Build APK
         working-directory: swt-android-app
         run: |
-          buildozer android debug
+          set -euo pipefail
+          export LANG=C.UTF-8
+          buildozer android debug & build_pid=$!
+          echo "buildozer pid=$build_pid"
+          while kill -0 "$build_pid" 2>/dev/null; do
+            find_paths=()
+            mapfile -t find_paths < <(find $HOME/.buildozer $PWD/.buildozer 2>/dev/null || true)
+            for base in "${find_paths[@]}"; do
+              find "$base" -type f -path '*python3*/Lib/test/badsyntax_pep3120.py' -exec bash -c 'echo "Removing {}"; rm -f "{}"' \; 2>/dev/null || true
+              find "$base" -type f -path '*python3*/Lib/test/*.py' -name 'badsyntax_*.py' -exec bash -c 'echo "Removing {}"; rm -f "{}"' \; 2>/dev/null || true
+            done
+            sleep 2
+          done
+          wait "$build_pid"
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
