@@ -34,12 +34,10 @@ jobs:
           pip install --upgrade pip
           pip install cython==0.29.33
           pip install buildozer==1.5.0
-          pip install --upgrade git+https://github.com/kivy/python-for-android.git
       
       - name: Build APK
         working-directory: swt-android-app
         run: |
-          buildozer android clean
           buildozer android debug --verbose
       
       - name: Upload APK
