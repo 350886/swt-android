@@ -63,24 +63,7 @@ jobs:
       
       - name: Build APK
         working-directory: swt-android-app
-        run: |
-          set -e
-          buildozer android debug --verbose || {
-            echo "Build failed, patching CPython test files..."
-            for p in $(find . -type f -path "./.buildozer/**/python3/Lib/test/badsyntax_pep3120.py" 2>/dev/null || true); do
-              python3 - <<'PY'
-import pathlib, sys
-p = pathlib.Path(sys.argv[1])
-data = p.read_bytes()
-try:
-    data.decode('utf-8')
-except UnicodeDecodeError:
-    text = data.decode('latin-1')
-    p.write_text('# -*- coding: latin-1 -*-\n' + text, encoding='utf-8')
-PY
-            done
-            buildozer android debug --verbose
-          }
+        run: buildozer android debug --verbose
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
