@@ -51,19 +51,10 @@ jobs:
           sudo apt-get install -y build-essential pkg-config \
             libffi-dev libssl-dev libbz2-dev libsqlite3-dev \
             libncurses5-dev libgdbm-dev liblzma-dev uuid-dev zlib1g-dev \
-            git patch unzip zip
+            git patch unzip zip dos2unix
           pip install --upgrade pip
           pip install cython==0.29.33
           pip install buildozer==1.5.0
-
-      - name: Install helper tools and Gradle fallback
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y dos2unix unzip
-          GRADLE_VERSION=8.0.2
-          wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -P /tmp
-          sudo unzip -q -d /opt/gradle /tmp/gradle-${GRADLE_VERSION}-bin.zip
-          echo "/opt/gradle/gradle-${GRADLE_VERSION}/bin" >> $GITHUB_PATH
 
       - name: Build APK
         working-directory: swt-android-app
@@ -81,46 +72,13 @@ jobs:
 
           rm -rf venv .venv env || true
 
-          ( while :; do
-              find ./.buildozer -type d -path "*/python3/*/Lib/test" -exec rm -rf {} + 2>/dev/null || true
-              find ./.buildozer -type f -name "badsyntax_pep3120.py" -delete 2>/dev/null || true
-              sleep 0.5
-            done ) & CLEANER_PID=$!
-
-          BUILD_EXIT=0
-          buildozer android debug --verbose 2>&1 | tee buildozer-full.log || BUILD_EXIT=$?
+          buildozer android debug --verbose 2>&1 | tee buildozer-full.log || BUILD_EXIT=$?; BUILD_EXIT=${BUILD_EXIT:-0}
 
           if [ "${BUILD_EXIT}" -ne 0 ]; then
             echo "buildozer failed with exit ${BUILD_EXIT}"
-            tail -n 300 buildozer-full.log || true
-
-            find ./.buildozer -type f -name gradlew -print0 | while IFS= read -r -d '' g; do
-              echo "Fixing gradlew at: $g"
-              if command -v dos2unix >/dev/null 2>&1; then
-                dos2unix "$g" || true
-              else
-                sed -i 's/\r$//' "$g" || true
-              fi
-              chmod +x "$g" || true
-
-              dist_dir="$(dirname "$g")"
-              (cd "$dist_dir" && ./gradlew assembleDebug --no-daemon) || true
-            done
-
-            find ./.buildozer -type d -path "*/dists/*" -print0 | while IFS= read -r -d '' d; do
-              if command -v gradle >/dev/null 2>&1; then
-                (cd "$d" && gradle assembleDebug --no-daemon) || true
-              fi
-            done
-
-            kill "$CLEANER_PID" 2>/dev/null || true
-            wait "$CLEANER_PID" 2>/dev/null || true
-
+            tail -n 100 buildozer-full.log || true
             exit "${BUILD_EXIT}"
           fi
-
-          kill "$CLEANER_PID" 2>/dev/null || true
-          wait "$CLEANER_PID" 2>/dev/null || true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
