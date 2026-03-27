@@ -72,7 +72,16 @@ jobs:
 
           rm -rf venv .venv env || true
 
+          ( while :; do
+              find ./.buildozer -type d -path "*/python3/*/Lib/test" -exec rm -rf {} + 2>/dev/null || true
+              find ./.buildozer -type f -name "badsyntax_pep3120.py" -delete 2>/dev/null || true
+              sleep 0.5
+            done ) & CLEANER_PID=$!
+
           buildozer android debug --verbose 2>&1 | tee buildozer-full.log || BUILD_EXIT=$?; BUILD_EXIT=${BUILD_EXIT:-0}
+
+          kill "$CLEANER_PID" 2>/dev/null || true
+          wait "$CLEANER_PID" 2>/dev/null || true
 
           if [ "${BUILD_EXIT}" -ne 0 ]; then
             echo "buildozer failed with exit ${BUILD_EXIT}"
