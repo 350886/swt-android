@@ -16,13 +16,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-      
+
+      - name: Prevent EOL conversions
+        run: |
+          git config --global core.eol lf
+          git config --global core.autocrlf false
+
       - name: Set up Java 17
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
-      
+
       - name: Install Android SDK
         run: |
           ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
@@ -39,7 +44,7 @@ jobs:
           echo "PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/tools/bin:$PATH" >> $GITHUB_ENV
           yes | "$ANDROID_SDK_ROOT/tools/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
           "$ANDROID_SDK_ROOT/tools/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;21.4.7075529"
-      
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -50,13 +55,21 @@ jobs:
           pip install --upgrade pip
           pip install cython==0.29.33
           pip install buildozer==1.5.0
-      
+
+      - name: Install helper tools and Gradle fallback
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dos2unix unzip
+          GRADLE_VERSION=8.0.2
+          wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -P /tmp
+          sudo unzip -q -d /opt/gradle /tmp/gradle-${GRADLE_VERSION}-bin.zip
+          echo "/opt/gradle/gradle-${GRADLE_VERSION}/bin" >> $GITHUB_PATH
+
       - name: Build APK
         working-directory: swt-android-app
         run: |
           set -euo pipefail
 
-          # Force using installed NDK
           export ANDROID_NDK_HOME="$HOME/.buildozer/android/platform/android-sdk/ndk/21.4.7075529"
           export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
           export ANDROIDNDK="$ANDROID_NDK_HOME"
@@ -66,30 +79,49 @@ jobs:
           echo "JAVA_HOME=$JAVA_HOME"
           java -version
 
-          # Remove any committed virtualenv directories
           rm -rf venv .venv env || true
 
-          # background cleaner
           ( while :; do
               find ./.buildozer -type d -path "*/python3/*/Lib/test" -exec rm -rf {} + 2>/dev/null || true
               find ./.buildozer -type f -name "badsyntax_pep3120.py" -delete 2>/dev/null || true
               sleep 0.5
             done ) & CLEANER_PID=$!
 
-          # Run buildozer
-          buildozer android debug --verbose 2>&1 | tee buildozer-full.log || BUILD_EXIT=$?; BUILD_EXIT=${BUILD_EXIT:-0}
-
-          kill "$CLEANER_PID" 2>/dev/null || true
-          wait "$CLEANER_PID" 2>/dev/null || true
+          BUILD_EXIT=0
+          buildozer android debug --verbose 2>&1 | tee buildozer-full.log || BUILD_EXIT=$?
 
           if [ "${BUILD_EXIT}" -ne 0 ]; then
             echo "buildozer failed with exit ${BUILD_EXIT}"
             tail -n 300 buildozer-full.log || true
-            # Try to show gradle output
-            find . -name "gradle*" -type f 2>/dev/null | head -5 | xargs -I{} cat {} 2>/dev/null || true
+
+            find ./.buildozer -type f -name gradlew -print0 | while IFS= read -r -d '' g; do
+              echo "Fixing gradlew at: $g"
+              if command -v dos2unix >/dev/null 2>&1; then
+                dos2unix "$g" || true
+              else
+                sed -i 's/\r$//' "$g" || true
+              fi
+              chmod +x "$g" || true
+
+              dist_dir="$(dirname "$g")"
+              (cd "$dist_dir" && ./gradlew assembleDebug --no-daemon) || true
+            done
+
+            find ./.buildozer -type d -path "*/dists/*" -print0 | while IFS= read -r -d '' d; do
+              if command -v gradle >/dev/null 2>&1; then
+                (cd "$d" && gradle assembleDebug --no-daemon) || true
+              fi
+            done
+
+            kill "$CLEANER_PID" 2>/dev/null || true
+            wait "$CLEANER_PID" 2>/dev/null || true
+
             exit "${BUILD_EXIT}"
           fi
-      
+
+          kill "$CLEANER_PID" 2>/dev/null || true
+          wait "$CLEANER_PID" 2>/dev/null || true
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
