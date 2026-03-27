@@ -39,11 +39,6 @@ jobs:
           echo "PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/tools/bin:$PATH" >> $GITHUB_ENV
           yes | "$ANDROID_SDK_ROOT/tools/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
           "$ANDROID_SDK_ROOT/tools/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;21.4.7075529"
-          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/21.4.7075529" >> $GITHUB_ENV
-          echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/21.4.7075529" >> $GITHUB_ENV
-          echo "ANDROIDNDK=$ANDROID_SDK_ROOT/ndk/21.4.7075529" >> $GITHUB_ENV
-          echo "ANDROIDAPI=33" >> $GITHUB_ENV
-          echo "ANDROIDMINAPI=21" >> $GITHUB_ENV
       
       - name: Install dependencies
         run: |
@@ -61,31 +56,37 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Force using installed NDK
+          export ANDROID_NDK_HOME="$HOME/.buildozer/android/platform/android-sdk/ndk/21.4.7075529"
+          export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+          export ANDROIDNDK="$ANDROID_NDK_HOME"
+          export P4A_NDK_PATH="$ANDROID_NDK_HOME"
+
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME"
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+
           # Remove any committed virtualenv directories
           rm -rf venv .venv env || true
 
-          # background cleaner to remove CPython test dirs while build runs
+          # background cleaner
           ( while :; do
-              if find ./.buildozer -type d -path "*/python3/*/Lib/test" -print -quit 2>/dev/null; then
-                echo "Removing CPython test directories..."
-                find ./.buildozer -type d -path "*/python3/*/Lib/test" -exec rm -rf {} + 2>/dev/null || true
-              fi
-              find ./.buildozer -type f -name "badsyntax_pep3120.py" -print -exec rm -f {} + 2>/dev/null || true
-              sleep 0.2
+              find ./.buildozer -type d -path "*/python3/*/Lib/test" -exec rm -rf {} + 2>/dev/null || true
+              find ./.buildozer -type f -name "badsyntax_pep3120.py" -delete 2>/dev/null || true
+              sleep 0.5
             done ) & CLEANER_PID=$!
 
-          # capture verbose build logs
-          export BUILDOZER_LOG_LEVEL=2
+          # Run buildozer
           buildozer android debug --verbose 2>&1 | tee buildozer-full.log || BUILD_EXIT=$?; BUILD_EXIT=${BUILD_EXIT:-0}
 
-          # stop cleaner
           kill "$CLEANER_PID" 2>/dev/null || true
           wait "$CLEANER_PID" 2>/dev/null || true
 
           if [ "${BUILD_EXIT}" -ne 0 ]; then
             echo "buildozer failed with exit ${BUILD_EXIT}"
-            tail -n 200 buildozer-full.log || true
-            find ./.buildozer -type f -name "gradle*log" -print -exec sed -n '1,400p' {} + 2>/dev/null || true
+            tail -n 300 buildozer-full.log || true
+            # Try to show gradle output
+            find . -name "gradle*" -type f 2>/dev/null | head -5 | xargs -I{} cat {} 2>/dev/null || true
             exit "${BUILD_EXIT}"
           fi
       
