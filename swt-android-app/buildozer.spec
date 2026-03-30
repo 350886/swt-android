@@ -11,3 +11,5 @@ requirements = kivy
 
 [buildozer]
 log_level = 2
+android.accept_sdk_license = True
+android.accept_ndk_license = True

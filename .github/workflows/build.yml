@@ -68,6 +68,7 @@ jobs:
         working-directory: swt-android-app
         run: |
           find .buildozer -name "gradlew" -type f -exec chmod +x {} \; 2>/dev/null || true
+          mkdir -p src/patches
 
       - name: Build APK
         working-directory: swt-android-app
