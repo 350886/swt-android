@@ -64,6 +64,11 @@ jobs:
           pip install cython==0.29.33
           pip install buildozer==1.5.0
 
+      - name: Make gradlew executable
+        working-directory: swt-android-app
+        run: |
+          find .buildozer -name "gradlew" -type f -exec chmod +x {} \; 2>/dev/null || true
+
       - name: Build APK
         working-directory: swt-android-app
         run: |
