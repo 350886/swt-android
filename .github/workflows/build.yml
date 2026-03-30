@@ -94,6 +94,18 @@ jobs:
           if [ "${BUILD_EXIT}" -ne 0 ]; then
             echo "buildozer failed with exit ${BUILD_EXIT}"
             tail -n 100 buildozer-full.log || true
+
+            for dist_dir in ./.buildozer/android/platform/*/dists/*/; do
+              if [ -f "$dist_dir/gradlew" ]; then
+                echo "=== Running gradle debug on $dist_dir ==="
+                cd "$dist_dir"
+                chmod +x ./gradlew
+                ./gradlew assembleDebug --stacktrace --info > gradle.log 2>&1 || true
+                echo "=== Gradle log tail ==="
+                tail -n 100 gradle.log || true
+              fi
+            done
+
             exit "${BUILD_EXIT}"
           fi
 
