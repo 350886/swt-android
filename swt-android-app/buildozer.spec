@@ -1,5 +1,5 @@
 [app]
-title = SWT货运系统
+title = SWT_HuoYun
 package.name = swt_system
 package.domain = com.swt
 source.dir = .
